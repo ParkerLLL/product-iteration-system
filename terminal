@@ -1,0 +1,296 @@
+# 创建项目主目录
+mkdir product-iteration-system
+cd product-iteration-system
+
+# 创建后端目录
+mkdir backend
+mkdir frontend 
+
+# 进入后端目录
+cd backend
+
+# 删除之前的 venv 目录（如果存在）
+rm -rf venv
+
+# 创建新的虚拟环境
+python -m venv venv
+
+# 激活虚拟环境
+# Mac/Linux:
+source venv/bin/activate
+# Windows:
+# venv\Scripts\activate
+
+# 升级 pip
+python -m pip install --upgrade pip
+
+# 然后安装所需的包
+pip install django==3.2.10
+pip install djangorestframework==3.12.4
+pip install django-cors-headers==3.10.1
+pip install mysqlclient==2.1.1
+
+# 验证安装
+pip list
+
+# 验证 Django 安装
+python -m django --version
+
+# 创建Django项目
+django-admin startproject config .
+django-admin startapp products 
+
+# 检查 MySQL 状态
+brew services list | grep mysql
+
+# 如果没有运行，启动 MySQL
+brew services start mysql
+
+# 确认数据库存在
+mysql -u root -p
+# 在 MySQL 提示符下：
+show databases;
+
+python manage.py makemigrations
+python manage.py migrate 
+
+# 进入frontend目录
+cd ../frontend
+
+# 使用 Vite 创建新项目
+npm create vite@latest . -- --template vue
+
+# 安装基础依赖
+npm install
+
+# 安装我们项目需要的其他依赖
+npm install axios vuex@next vue-router@4 element-plus @fullcalendar/vue3 @fullcalendar/core @fullcalendar/daygrid
+npm install @fullcalendar/interaction
+
+mkdir src/components
+mkdir src/views
+mkdir src/store
+mkdir src/api 
+
+# 然后运行开发服务器
+npm run dev 
+
+# 打开新的终端窗口，进入后端目录
+cd backend
+
+# 激活虚拟环境
+# Windows:
+venv\Scripts\activate
+# Mac/Linux:
+source venv/bin/activate
+
+# 确认 Django 已安装
+python -m django --version
+
+# 如果数据库配置正确，运行迁移
+python manage.py makemigrations
+python manage.py migrate
+
+# 创建超级用户（用于访问管理界面）
+python manage.py createsuperuser
+
+# 启动服务器并指定允许所有主机访问
+python manage.py runserver 0.0.0.0:8000 --verbosity 2
+
+# 在另一个终端窗口，进入前端目录
+cd frontend
+
+# 删除 node_modules 和 package-lock.json
+rm -rf node_modules package-lock.json
+
+# 重新安装依赖
+npm install
+
+# 启动开发服务器
+npm run dev 
+
+mkdir -p config
+touch config/__init__.py
+touch config/urls.py
+
+# 打开新的终端窗口
+# 进入前端目录
+cd product-iteration-system/frontend
+
+# 安装依赖（如果还没安装）
+npm install
+
+# 启动前端开发服务器
+npm run dev 
+
+# 在后端终端中创建超级用户
+python manage.py createsuperuser 
+
+# 在后端目录下
+cd backend
+source venv/bin/activate
+
+# 创建管理员账号（如果还没创建）
+python manage.py createsuperuser
+
+# 启动后端服务器
+python manage.py runserver 0.0.0.0:8000 --verbosity 2
+
+# 删除旧的数据库文件（如果存在）
+rm db.sqlite3
+
+# 重新运行迁移
+python manage.py makemigrations
+python manage.py migrate
+
+# 创建超级用户
+python manage.py createsuperuser
+# 按提示输入用户名、邮箱和密码
+
+# 重启服务器
+python manage.py runserver 0.0.0.0:8000 --verbosity 2
+
+# 后端
+python manage.py makemigrations
+python manage.py migrate
+python manage.py createsuperuser  # 如果需要
+python manage.py runserver 0.0.0.0:8000 --verbosity 2
+
+# 前端（新终端）
+npm run dev 
+
+# 在后端目录下
+python manage.py makemigrations products
+python manage.py migrate 
+
+# 确保在虚拟环境中
+source venv/bin/activate
+
+# 卸载所有已安装的包
+pip freeze > requirements.txt
+pip uninstall -r requirements.txt -y
+
+# 重新安装必要的包
+pip install django==3.2.10
+pip install djangorestframework==3.12.4
+pip install django-cors-headers==3.10.1
+pip install mysqlclient==2.1.1
+
+# 验证安装的版本
+pip freeze | grep -E "Django|djangorestframework|django-cors-headers|mysqlclient"
+
+# 重新运行迁移
+python manage.py makemigrations
+python manage.py migrate
+
+# 启动服务器
+python manage.py runserver 0.0.0.0:8000 --verbosity 2
+
+# 安装所需的系统依赖
+brew install pkg-config
+brew install mysql-connector-c
+
+# 设置环境变量
+export PATH="/usr/local/opt/mysql-connector-c/bin:$PATH"
+export LDFLAGS="-L/usr/local/opt/mysql-connector-c/lib"
+export CPPFLAGS="-I/usr/local/opt/mysql-connector-c/include"
+
+# 然后重新安装 mysqlclient
+pip install mysqlclient
+
+# 验证安装
+python -c "import MySQLdb; print(MySQLdb)" 
+
+# 删除旧的迁移文件（如果有）
+rm -rf products/migrations/
+
+# 创建新的迁移
+python manage.py makemigrations products
+
+# 应用迁移
+python manage.py migrate
+
+# 创建超级用户
+python manage.py createsuperuser 
+
+# 删除所有迁移文件
+find . -path "*/migrations/*.py" -not -name "__init__.py" -delete
+find . -path "*/migrations/*.pyc" -delete
+
+# 删除数据库（如果存在）
+mysql -u root -p
+# 在 MySQL 中执行：
+DROP DATABASE IF EXISTS product_iteration;
+CREATE DATABASE product_iteration CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+exit;
+
+# 重新创建迁移
+python manage.py makemigrations products
+
+# 应用迁移
+python manage.py migrate
+
+# 创建超级用户
+python manage.py createsuperuser 
+
+# 检查端口 8000 是否在监听
+lsof -i :8000
+
+# 或者使用 curl 测试 API
+curl http://localhost:8000/api/products/ 
+
+# 在 Mac 上检查端口是否开放
+sudo lsof -i -P | grep -i "listen" 
+
+# 停止 MySQL 服务
+brew services stop mysql
+
+# 以安全模式启动 MySQL
+mysql.server start --skip-grant-tables 
+
+# 连接到 MySQL（不需要密码）
+mysql -u root
+
+# 在 MySQL 提示符下执行：
+FLUSH PRIVILEGES;
+ALTER USER 'root'@'localhost' IDENTIFIED BY '';  # 设置空密码
+FLUSH PRIVILEGES;
+exit; 
+
+# 停止安全模式的 MySQL
+mysql.server stop
+
+# 正常启动 MySQL 服务
+brew services start mysql 
+
+# 使用空密码登录
+mysql -u root
+
+# 在 MySQL 中执行：
+show databases;
+CREATE DATABASE IF NOT EXISTS product_iteration CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+exit; 
+
+# 在后端目录下
+cd backend
+
+# 删除所有迁移文件
+find . -path "*/migrations/*.py" -not -name "__init__.py" -delete
+find . -path "*/migrations/*.pyc" -delete
+
+# 重新创建迁移
+python manage.py makemigrations products
+
+# 应用迁移
+python manage.py migrate
+
+# 创建超级用户
+python manage.py createsuperuser 
+
+mysql -u root
+
+# 在 MySQL 中执行：
+CREATE USER 'django'@'localhost' IDENTIFIED BY 'django123';
+GRANT ALL PRIVILEGES ON product_iteration.* TO 'django'@'localhost';
+FLUSH PRIVILEGES;
+exit; 
