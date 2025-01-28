@@ -8,7 +8,7 @@
     </div>
     
     <!-- 版本明细表 -->
-    <div v-if="currentDate" class="version-details">
+    <div v-if="currentDate" class="version-details">  
       <h3>{{ formatDate(currentDate) }}的版本计划</h3>
       <div v-if="currentDateVersions.length">
         <el-collapse v-model="activeProducts">
