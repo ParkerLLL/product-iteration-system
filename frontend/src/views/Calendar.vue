@@ -37,7 +37,7 @@
             :name="group.productId"
           >
             <el-table 
-              :data="group.versions" 
+              :data="group.versions"  
               style="width: 100%"
               :header-cell-style="{ 
                 backgroundColor: '#f5f7fa',
