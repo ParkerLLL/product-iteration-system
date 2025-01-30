@@ -100,13 +100,20 @@ python manage.py runserver 0.0.0.0:8000 --verbosity 2
 # 在另一个终端窗口，进入前端目录
 cd frontend
 
-# 删除 node_modules 和 package-lock.json
-rm -rf node_modules package-lock.json
+# 安装 tippy.js 和 xlsx
+npm install tippy.js xlsx @element-plus/icons-vue
 
-# 重新安装依赖
+# 安装 tippy.js 的样式
+npm install tippy.js/dist/tippy.css
+
+# 重新安装所有依赖
+rm -rf node_modules package-lock.json
 npm install
 
-# 启动开发服务器
+# 安装 @fullcalendar/interaction
+npm install @fullcalendar/interaction
+
+# 重启前端开发服务器
 npm run dev 
 
 mkdir -p config
@@ -294,3 +301,48 @@ CREATE USER 'django'@'localhost' IDENTIFIED BY 'django123';
 GRANT ALL PRIVILEGES ON product_iteration.* TO 'django'@'localhost';
 FLUSH PRIVILEGES;
 exit; 
+
+# 在项目根目录下
+touch .gitignore 
+
+# 初始化 Git 仓库 SHA256:6Jz1qEhEy3YbXmcaFLLOt38xwaiPSUB/UZRY32BvdoQ parkercn@qq.com
+#ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINVqgganyvBgbTiXRsnhNapyRpBBPilsivCRamGmAP6B parkercn@qq.com
+git init
+
+# 添加所有文件到暂存区
+git add .
+
+# 提交更改，按功能分开提交
+git commit -m "feat(calendar): 优化日历视图展示
+
+- 添加日期选择器和图例说明
+- 优化事件卡片样式和布局
+- 添加事件悬浮提示和详情弹窗
+- 实现产品和状态筛选功能
+- 添加统计信息展示
+- 添加日历数据导出功能"
+
+git commit -m "style(ui): 改进整体界面样式
+
+- 统一配色方案
+- 优化布局间距和对齐
+- 改进卡片和表格样式
+- 添加过渡动画效果"
+
+git commit -m "chore(deps): 更新项目依赖
+
+- 添加 tippy.js 用于工具提示
+- 添加 xlsx 用于数据导出
+- 添加 element-plus 图标库
+- 更新 FullCalendar 相关依赖"
+
+# 添加远程仓库（替换 YOUR_USERNAME 为你的 GitHub 用户名）
+git remote add origin https://github.com/ParkerLLL/product-iteration-system.git
+
+# 推送代码到主分支 git remote add origin https://h0Uh4mP09Vt17Xpi4ebnhzNLEJ07kN2iw9Tl@github.com/ParkerLLL/product-iteration-system.git
+git branch -M main
+git push -u origin main 
+
+# 在 frontend 目录下
+npm uninstall @fullcalendar/core @fullcalendar/daygrid @fullcalendar/vue3 @fullcalendar/interaction
+npm install @fullcalendar/core @fullcalendar/daygrid @fullcalendar/vue3 @fullcalendar/interaction 

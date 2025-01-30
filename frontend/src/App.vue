@@ -20,6 +20,23 @@ import { ElContainer, ElHeader, ElMain, ElMenu, ElMenuItem } from 'element-plus'
   </div>
 </template>
 
+<style>
+/* 添加全局重置样式 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+    Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f0f2f5;
+}
+</style>
+
 <style scoped>
 .app-container {
   min-height: 100vh;
@@ -30,9 +47,12 @@ import { ElContainer, ElHeader, ElMain, ElMenu, ElMenuItem } from 'element-plus'
   padding: 0 20px;
   margin-bottom: 20px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  background-color: #fff;
 }
 
 .main-content {
   padding: 0 20px;
+  display: flex;
+  justify-content: center;
 }
 </style>
