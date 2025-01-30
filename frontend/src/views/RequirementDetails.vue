@@ -79,41 +79,43 @@
               (共 {{ currentRequirements.length }} 项)
             </span>
           </h3>
-          <el-table :data="currentRequirements" style="width: 100%">
-            <el-table-column prop="issue_id" label="需求ID" width="120" />
-            <el-table-column prop="title" label="需求标题" min-width="300">
-              <template #default="scope">
-                <div class="requirement-title">
-                  <span>{{ scope.row.title }}</span>
-                  <el-tag 
-                    v-if="scope.row.is_key_feature" 
-                    type="danger" 
-                    effect="plain" 
-                    size="small"
-                  >
-                    核心功能
+          <div class="table-wrapper">
+            <el-table :data="currentRequirements">
+              <el-table-column prop="issue_id" label="需求ID" width="120" />
+              <el-table-column prop="title" label="需求标题" min-width="300">
+                <template #default="scope">
+                  <div class="requirement-title">
+                    <span>{{ scope.row.title }}</span>
+                    <el-tag 
+                      v-if="scope.row.is_key_feature" 
+                      type="danger" 
+                      effect="plain" 
+                      size="small"
+                    >
+                      核心功能
+                    </el-tag>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column prop="status" label="状态" width="120">
+                <template #default="scope">
+                  <el-tag :type="getRequirementStatusType(scope.row.status)">
+                    {{ scope.row.status }}
                   </el-tag>
-                </div>
-              </template>
-            </el-table-column>
-            <el-table-column prop="status" label="状态" width="120">
-              <template #default="scope">
-                <el-tag :type="getRequirementStatusType(scope.row.status)">
-                  {{ scope.row.status }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="priority" label="优先级" width="100">
-              <template #default="scope">
-                <el-tag 
-                  :type="getPriorityType(scope.row.priority)"
-                  effect="plain"
-                >
-                  P{{ scope.row.priority }}
-                </el-tag>
-              </template>
-            </el-table-column>
-          </el-table>
+                </template>
+              </el-table-column>
+              <el-table-column prop="priority" label="优先级" width="100">
+                <template #default="scope">
+                  <el-tag 
+                    :type="getPriorityType(scope.row.priority)"
+                    effect="plain"
+                  >
+                    P{{ scope.row.priority }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
         </div>
 
         <!-- 移除/变更的需求 -->
@@ -124,21 +126,23 @@
               (共 {{ removedRequirements.length }} 项)
             </span>
           </h3>
-          <el-table :data="removedRequirements" style="width: 100%">
-            <el-table-column prop="issue_id" label="需求ID" width="120" />
-            <el-table-column prop="title" label="需求标题" min-width="300" />
-            <el-table-column prop="change_type" label="变更类型" width="120">
-              <template #default="scope">
-                <el-tag 
-                  :type="getChangeType(scope.row.change_type)"
-                  effect="dark"
-                >
-                  {{ scope.row.change_type }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="change_reason" label="变更原因" min-width="200" />
-          </el-table>
+          <div class="table-wrapper">
+            <el-table :data="removedRequirements">
+              <el-table-column prop="issue_id" label="需求ID" width="120" />
+              <el-table-column prop="title" label="需求标题" min-width="300" />
+              <el-table-column prop="change_type" label="变更类型" width="120">
+                <template #default="scope">
+                  <el-tag 
+                    :type="getChangeType(scope.row.change_type)"
+                    effect="dark"
+                  >
+                    {{ scope.row.change_type }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="change_reason" label="变更原因" min-width="200" />
+            </el-table>
+          </div>
         </div>
       </div>
 
@@ -239,19 +243,25 @@ const getChangeType = (type) => {
 
 <style scoped>
 .requirement-details-container {
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  min-height: 100vh;
-  padding: 20px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0,21,41,0.08);
+  padding: 24px;
+  height: calc(100vh - 108px);
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  min-width: 1000px;
 }
 
 .requirement-details {
-  width: 90%;
+  width: 100%;
+  height: 100%;
   background: white;
-  padding: 24px;
+  padding: 0;
   border-radius: 8px;
-  box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);
+  display: flex;
+  flex-direction: column;
 }
 
 .header-section {
@@ -259,19 +269,26 @@ const getChangeType = (type) => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 24px;
+  width: 100%;
+  min-width: 1000px;
 }
 
 .filters {
   display: flex;
   gap: 16px;
+  flex-shrink: 0;
 }
 
 .version-info {
   margin-bottom: 24px;
+  width: 100%;
+  min-width: 1000px;
 }
 
 .requirement-group {
   margin-bottom: 32px;
+  width: 100%;
+  min-width: 1000px;
 }
 
 .requirement-group h3 {
@@ -307,18 +324,38 @@ const getChangeType = (type) => {
   border-radius: 4px;
 }
 
+.table-wrapper {
+  overflow-x: auto;
+  margin-bottom: 20px;
+}
+
 :deep(.el-table) {
-  margin-top: 8px;
+  width: 100%;
+  min-width: 1000px;
 }
 
-:deep(.el-table th) {
-  background-color: #f5f7fa;
-  color: #606266;
-  font-weight: bold;
+:deep(.el-table .cell) {
+  white-space: nowrap;
 }
 
-:deep(.el-empty) {
-  padding: 40px 0;
+:deep(.el-table .el-table__cell[data-col-index="0"]) {
+  width: 120px !important;
+  min-width: 120px !important;
+}
+
+:deep(.el-table .el-table__cell[data-col-index="1"]) {
+  width: 300px !important;
+  min-width: 300px !important;
+}
+
+:deep(.el-table .el-table__cell[data-col-index="2"]) {
+  width: 120px !important;
+  min-width: 120px !important;
+}
+
+:deep(.el-table .el-table__cell[data-col-index="3"]) {
+  width: 100px !important;
+  min-width: 100px !important;
 }
 
 .version-summary {
@@ -343,5 +380,26 @@ const getChangeType = (type) => {
   color: #606266;
   font-size: 14px;
   line-height: 1.6;
+}
+
+:deep(.el-empty) {
+  padding: 120px 0;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin: 24px 0;
+  width: 100%;
+  min-width: 1000px;
+  box-sizing: border-box;
+}
+
+:deep(.el-empty__description) {
+  margin-top: 20px;
+  font-size: 14px;
+  color: #666;
+}
+
+.main-content {
+  overflow-x: auto;
+  width: 100%;
 }
 </style> 

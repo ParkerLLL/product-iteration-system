@@ -5,31 +5,32 @@
         <h2>产品迭代管理</h2>
         <el-button type="primary" @click="showCreateDialog">新增产品</el-button>
       </div>
-
-      <el-table :data="products" style="width: 100%">
-        <el-table-column prop="name" label="产品名称" width="180" />
-        <el-table-column prop="description" label="产品描述" width="250" />
-        <el-table-column label="最新版本" width="200">
-          <template #default="scope">
-            <div v-if="scope.row.versions?.length">
-              <div>版本号: {{ scope.row.versions[0].version_number }}</div>
-              <div>发布日期: {{ scope.row.versions[0].release_date }}</div>
-              <div>状态: {{ scope.row.versions[0].status }}</div>
-            </div>
-            <span v-else>暂无版本</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" min-width="380">
-          <template #default="scope">
-            <div class="operation-buttons">
-              <el-button @click="showVersions(scope.row)">版本</el-button>
-              <el-button type="success" @click="addVersion(scope.row)">新增版本</el-button>
-              <el-button type="primary" @click="editProduct(scope.row)">编辑</el-button>
-              <el-button type="danger" @click="handleDelete(scope.row)">删除</el-button>
-            </div>
-          </template>
-        </el-table-column>
-      </el-table>
+      <div class="table-container">
+        <el-table :data="products" style="width: 100%">
+          <el-table-column prop="name" label="产品名称" width="180" />
+          <el-table-column prop="description" label="产品描述" width="250" />
+          <el-table-column label="最新版本" width="200">
+            <template #default="scope">
+              <div v-if="scope.row.versions?.length">
+                <div>版本号: {{ scope.row.versions[0].version_number }}</div>
+                <div>发布日期: {{ scope.row.versions[0].release_date }}</div>
+                <div>状态: {{ scope.row.versions[0].status }}</div>
+              </div>
+              <span v-else>暂无版本</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" min-width="380">
+            <template #default="scope">
+              <div class="operation-buttons">
+                <el-button @click="showVersions(scope.row)">版本</el-button>
+                <el-button type="success" @click="addVersion(scope.row)">新增版本</el-button>
+                <el-button type="primary" @click="editProduct(scope.row)">编辑</el-button>
+                <el-button type="danger" @click="handleDelete(scope.row)">删除</el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
 
       <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑产品' : '新增产品'">
         <el-form :model="form" label-width="100px">
@@ -205,20 +206,24 @@ const saveVersion = async () => {
 
 <style scoped>
 .product-list-container {
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  min-height: 100vh;
-  padding: 20px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0,21,41,0.08);
+  padding: 24px;
+  height: calc(100vh - 108px);
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .product-list {
-  width: 80%;
-  min-height: 70vh;
+  width: 100%;
+  height: 100%;
   background: white;
-  padding: 20px;
+  padding: 0;
   border-radius: 8px;
-  box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);
+  display: flex;
+  flex-direction: column;
 }
 
 .header {
@@ -228,10 +233,10 @@ const saveVersion = async () => {
   margin-bottom: 20px;
 }
 
-.operation-buttons {
-  display: flex;
-  gap: 8px;
-  flex-wrap: nowrap;
+.table-container {
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: auto;
 }
 
 :deep(.el-table) {
@@ -241,6 +246,33 @@ const saveVersion = async () => {
 :deep(.el-table .cell) {
   padding: 8px;
   line-height: 1.5;
+  white-space: nowrap;
+}
+
+:deep(.el-table .el-table__cell[data-col-index="0"]) {
+  width: 180px !important;
+  min-width: 180px !important;
+}
+
+:deep(.el-table .el-table__cell[data-col-index="1"]) {
+  width: 250px !important;
+  min-width: 250px !important;
+}
+
+:deep(.el-table .el-table__cell[data-col-index="2"]) {
+  width: 200px !important;
+  min-width: 200px !important;
+}
+
+:deep(.el-table .el-table__cell[data-col-index="3"]) {
+  width: 400px !important;
+  min-width: 400px !important;
+}
+
+.operation-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
 }
 
 :deep(.el-button) {

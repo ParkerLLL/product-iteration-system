@@ -551,12 +551,13 @@ const exportCalendar = () => {
 
 <style scoped>
 .calendar-view {
-  padding: 20px;
-  width: 90%;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);
+  padding: 24px;
+  min-height: calc(100vh - 40px);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .calendar-header {
