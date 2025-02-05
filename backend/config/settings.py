@@ -10,16 +10,16 @@ SECRET_KEY = 'django-insecure-your-secret-key'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 # 将数据库配置改为 MySQL
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'product_iteration',
-        'USER': 'root',
-        'PASSWORD': ' ',  # 修改为你的实际密码
-        'HOST': 'localhost',
+        'USER': 'django',
+        'PASSWORD': 'django123',
+        'HOST': '127.0.0.1',  # 使用 IP 而不是 localhost
         'PORT': '3306',
         'OPTIONS': {
             'charset': 'utf8mb4',
@@ -55,6 +55,7 @@ MIDDLEWARE = [
 # CORS设置
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
+    "http://127.0.0.1:5173",
 ]
 
 CORS_ALLOW_METHODS = [
@@ -80,6 +81,9 @@ CORS_ALLOW_HEADERS = [
 
 # 允许携带认证信息
 CORS_ALLOW_CREDENTIALS = True
+
+# 添加这些设置
+CORS_ALLOW_ALL_ORIGINS = True  # 开发环境下可以允许所有源
 
 ROOT_URLCONF = 'config.urls'
 

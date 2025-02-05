@@ -55,6 +55,14 @@ const generateMockData = () => {
                 })
             }
 
+            const summaries = [
+                '本版本主要关注用户体验优化和性能提升',
+                '核心功能更新，提供更多自定义选项',
+                '修复关键问题，提升系统稳定性',
+                '新增多项创新功能，优化用户交互',
+                '重要安全更新和功能增强'
+            ]
+
             versions.push({
                 id: productIndex * 10 + i + 1,
                 version_number: versionNumber,
@@ -63,7 +71,10 @@ const generateMockData = () => {
                     i === 1 ? '测试中' :
                         i === 2 ? '开发中' : '规划中',
                 requirements,
-                removedRequirements
+                removedRequirements,
+                summary: summaries[Math.floor(Math.random() * summaries.length)] +
+                    `，包含 ${requirements.length} 项新功能和改进，` +
+                    `${removedRequirements.length} 项需求调整。`
             })
         }
 
