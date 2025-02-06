@@ -264,25 +264,44 @@ const getChangeType = (type) => {
   flex-direction: column;
 }
 
+/* 固定头部区域 */
 .header-section {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-shrink: 0;
   margin-bottom: 24px;
-  width: 100%;
-  min-width: 1000px;
+}
+
+/* 固定版本信息区域 */
+.version-info {
+  flex-shrink: 0;
+  margin-bottom: 24px;
+}
+
+/* 需求列表可滚动区域 */
+.requirements-section {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 8px;
+  margin-right: -8px; /* 补偿padding-right造成的宽度增加 */
+}
+
+/* 设置滚动条样式 */
+.requirements-section::-webkit-scrollbar {
+  width: 6px;
+}
+
+.requirements-section::-webkit-scrollbar-thumb {
+  background-color: #909399;
+  border-radius: 3px;
+}
+
+.requirements-section::-webkit-scrollbar-track {
+  background-color: #f5f7fa;
 }
 
 .filters {
   display: flex;
   gap: 16px;
   flex-shrink: 0;
-}
-
-.version-info {
-  margin-bottom: 24px;
-  width: 100%;
-  min-width: 1000px;
 }
 
 .requirement-group {

@@ -127,7 +127,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { useStore } from 'vuex'
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
@@ -141,7 +141,19 @@ import * as XLSX from 'xlsx'
 const store = useStore()
 const calendarRef = ref(null)
 const currentDate = ref(null)
-const activeProducts = ref([]) // 当前展开的产品
+const activeProducts = ref([])
+
+// 获取产品列表
+const products = computed(() => store.state.products)
+
+// 在组件挂载时获取数据
+onMounted(async () => {
+  console.log('Calendar component mounted')
+  await store.dispatch('fetchProducts')
+  console.log('Products loaded:', store.state.products)
+  console.log('Calendar events:', store.state.calendarEvents)
+})
+
 const events = computed(() => store.state.calendarEvents)
 
 // 获取当前选中日期的所有版本
@@ -242,25 +254,20 @@ const calendarOptions = {
     info.dayEl.classList.add('fc-day-selected')
   },
   eventContent: (arg) => {
-    try {
-      return {
-        html: `
-          <div class="fc-event-main-content">
-            <div class="event-title">
-              <span class="product-name">${arg.event.extendedProps?.productName || ''}</span>
-              <span class="version-number">${arg.event.extendedProps?.version_number || ''}</span>
-            </div>
-            <div class="event-status">
-              <span class="status-badge status-${arg.event.extendedProps?.status || ''}">${arg.event.extendedProps?.status || ''}</span>
-            </div>
+    const title = `${arg.event.extendedProps.productName || ''} ${arg.event.extendedProps.version_number || ''}`;
+    return {
+      html: `
+        <div class="fc-event-main-content" style="padding: 2px 4px;">
+          <div class="event-title" style="font-size: 12px; font-weight: bold; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+            ${title}
           </div>
-        `
-      }
-    } catch (error) {
-      console.error('Error rendering event:', error)
-      return {
-        html: '<div class="fc-event-main-content">Error rendering event</div>'
-      }
+          <div class="event-status" style="text-align: right;">
+            <span class="status-badge status-${arg.event.extendedProps.status}" style="font-size: 11px; padding: 1px 4px; border-radius: 2px;">
+              ${arg.event.extendedProps.status}
+            </span>
+          </div>
+        </div>
+      `
     }
   },
   eventDidMount: (info) => {
@@ -288,9 +295,44 @@ const calendarOptions = {
   eventOrder: 'title',
   dayCellDidMount: (arg) => {
     try {
-      arg.el.style.height = '120px'
+      // 格式化日期为 YYYY-MM-DD 格式
+      const year = arg.date.getFullYear();
+      const month = String(arg.date.getMonth() + 1).padStart(2, '0');
+      const day = String(arg.date.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
+      
+      // 获取当天的所有版本
+      const dayEvents = filteredEvents.value.filter(event => event.date === dateStr);
+      
+      if (dayEvents.length > 0) {
+        // 设置紫色背景
+        arg.el.style.backgroundColor = 'rgba(128, 0, 128, 0.2)';
+        
+        // 修改日期格子的内容
+        const dayTop = arg.el.querySelector('.fc-daygrid-day-top');
+        if (dayTop) {
+          const dayNumber = dayTop.querySelector('.fc-daygrid-day-number');
+          if (dayNumber) {
+            dayNumber.innerHTML = `
+              <div class="fc-daygrid-day-top">
+                <a class="fc-daygrid-day-number">${day}日</a>
+              </div>
+              <div class="day-versions">
+                ${dayEvents.map(event => `
+                  <div class="day-version-item">
+                    <span class="version-product">${event.extendedProps.productName}</span>
+                    <span class="version-number">${event.extendedProps.version_number}</span>
+                  </div>
+                `).join('')}
+              </div>
+            `;
+          }
+        }
+      }
+      
+      arg.el.style.height = '120px';
     } catch (error) {
-      console.error('Error in dayCellDidMount:', error)
+      console.error('Error in dayCellDidMount:', error);
     }
   },
   handleWindowResize: true,
@@ -374,6 +416,16 @@ const exportCalendar = () => {
   XLSX.utils.book_append_sheet(wb, ws, '发布计划')
   XLSX.writeFile(wb, '产品发布日历.xlsx')
 }
+
+// 监听事件数据变化
+watch(() => store.state.calendarEvents, (newEvents) => {
+  console.log('Calendar events updated:', newEvents)
+}, { deep: true })
+
+// 监听过滤后的事件
+watch(filteredEvents, (newEvents) => {
+  console.log('Filtered events updated:', newEvents)
+}, { deep: true })
 </script>
 
 <style>
@@ -424,44 +476,46 @@ const exportCalendar = () => {
 /* 事件样式 */
 .calendar-view .fc-event {
   margin: 2px 0;
-  padding: 6px 8px;
-  border: none;
+  padding: 2px !important;
+  border: none !important;
   border-radius: 4px;
-  background: white;
+  background: white !important;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  cursor: pointer;
+}
+
+.calendar-view .fc-event-main {
+  padding: 0 !important;
+}
+
+.calendar-view .fc-event-main-content {
+  width: 100%;
+  min-height: 20px;
 }
 
 .calendar-view .event-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 4px;
-}
-
-.calendar-view .product-name {
-  font-weight: bold;
-  color: #333;
-  font-size: 0.9em;
-}
-
-.calendar-view .version-number {
-  color: #666;
-  font-size: 0.85em;
-  background: #f5f7fa;
-  padding: 1px 4px;
-  border-radius: 3px;
+  font-weight: bold !important;
+  font-size: 12px !important;
+  color: #333 !important;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+  padding: 0 2px;
 }
 
 .calendar-view .event-status {
-  display: flex;
-  justify-content: flex-end;
+  text-align: right;
+  line-height: 1;
 }
 
 .calendar-view .status-badge {
-  font-size: 0.75em;
-  padding: 2px 6px;
-  border-radius: 3px;
+  font-size: 11px !important;
+  padding: 1px 4px !important;
+  border-radius: 2px;
   display: inline-block;
+  line-height: 1.2;
 }
 
 /* 状态样式 */
@@ -546,6 +600,54 @@ const exportCalendar = () => {
 .detail-item .label {
   width: 80px;
   color: #666;
+}
+
+/* 日期格子中的版本信息样式 */
+.calendar-view .day-versions {
+  margin-top: 4px;
+}
+
+.calendar-view .day-version-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  margin: 2px 0;
+  padding: 2px 4px;
+  background: white;
+  border-radius: 3px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.calendar-view .version-product {
+  color: #333;
+  font-weight: 500;
+  margin-right: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.calendar-view .version-number {
+  color: #666;
+  font-size: 11px;
+  background: #f5f7fa;
+  padding: 1px 4px;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+
+/* 调整日期格子的内边距 */
+.calendar-view .fc .fc-daygrid-day-frame {
+  padding: 4px !important;
+}
+
+/* 调整日期数字的样式 */
+.calendar-view .fc .fc-daygrid-day-number {
+  padding: 2px 4px;
+  font-size: 12px;
+  color: #333;
+  font-weight: 500;
 }
 </style>
 
