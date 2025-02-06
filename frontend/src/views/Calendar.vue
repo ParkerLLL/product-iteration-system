@@ -380,28 +380,43 @@ const handleStatusFilter = (value) => {
 }
 
 // 添加统计计算
-const statistics = computed(() => [
-  {
-    label: '本月发布计划',
-    value: events.value.filter(event => {
-      const date = new Date(event.date)
-      const now = new Date()
-      return date.getMonth() === now.getMonth()
-    }).length
-  },
-  {
-    label: '规划中版本',
-    value: events.value.filter(event => 
-      event.extendedProps.status === '规划中'
-    ).length
-  },
-  {
-    label: '开发中版本',
-    value: events.value.filter(event => 
-      event.extendedProps.status === '开发中'
-    ).length
-  }
-])
+const statistics = computed(() => {
+  const now = new Date()
+  const currentYear = now.getFullYear()
+  const currentMonth = now.getMonth()
+
+  // 获取当月的开始和结束日期
+  const monthStart = new Date(currentYear, currentMonth, 1)
+  const monthEnd = new Date(currentYear, currentMonth + 1, 0)
+
+  // 过滤当月的发布计划
+  const currentMonthEvents = events.value.filter(event => {
+    const eventDate = new Date(event.date)
+    return eventDate >= monthStart && eventDate <= monthEnd
+  })
+
+  // 按状态统计所有版本
+  const statusCount = events.value.reduce((acc, event) => {
+    const status = event.extendedProps.status
+    acc[status] = (acc[status] || 0) + 1
+    return acc
+  }, {})
+
+  return [
+    {
+      label: '本月发布计划',
+      value: currentMonthEvents.length
+    },
+    {
+      label: '规划中版本',
+      value: statusCount['规划中'] || 0
+    },
+    {
+      label: '开发中版本',
+      value: statusCount['开发中'] || 0
+    }
+  ]
+})
 
 const exportCalendar = () => {
   const data = events.value.map(event => ({

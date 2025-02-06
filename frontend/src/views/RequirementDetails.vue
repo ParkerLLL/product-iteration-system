@@ -19,20 +19,29 @@
           </el-select>
 
           <el-select
-            v-model="selectedVersion"
-            placeholder="选择版本"
+            v-model="releaseType"
+            placeholder="选择发布类型"
             :disabled="!selectedProduct"
           >
+            <el-option label="迭代" value="iteration" />
+            <el-option label="版本" value="version" />
+          </el-select>
+
+          <el-select
+            v-model="selectedVersionNumber"
+            :placeholder="releaseType === 'iteration' ? '选择迭代号' : '选择版本号'"
+            :disabled="!releaseType"
+          >
             <el-option
-              v-for="version in filteredVersions"
-              :key="version.id"
-              :label="version.version_number"
-              :value="version.id"
+              v-for="ver in filteredVersionNumbers"
+              :key="ver.id"
+              :label="releaseType === 'iteration' ? ver.iteration_number : ver.version_number"
+              :value="ver.id"
             >
-              <span>{{ version.version_number }}</span>
-              <span class="version-date">{{ version.release_date }}</span>
-              <el-tag size="small" :type="getStatusType(version.status)">
-                {{ version.status }}
+              <span>{{ releaseType === 'iteration' ? ver.iteration_number : ver.version_number }}</span>
+              <span class="version-date">{{ ver.release_date }}</span>
+              <el-tag size="small" :type="getStatusType(ver.status)">
+                {{ ver.status }}
               </el-tag>
             </el-option>
           </el-select>
@@ -40,17 +49,20 @@
       </div>
 
       <!-- 版本信息展示区 -->
-      <div v-if="selectedVersion" class="version-info">
-        <el-descriptions :column="3" border>
-          <el-descriptions-item label="版本号">
-            {{ currentVersion?.version_number }}
+      <div v-if="selectedVersionNumber" class="version-info">
+        <el-descriptions :column="4" border>
+          <el-descriptions-item label="发布类型">
+            {{ releaseType === 'iteration' ? '迭代' : '版本' }}
+          </el-descriptions-item>
+          <el-descriptions-item :label="releaseType === 'iteration' ? '迭代号' : '版本号'">
+            {{ releaseType === 'iteration' ? currentVersionInfo?.iteration_number : currentVersionInfo?.version_number }}
           </el-descriptions-item>
           <el-descriptions-item label="计划发布日期">
-            {{ currentVersion?.release_date }}
+            {{ currentVersionInfo?.release_date }}
           </el-descriptions-item>
           <el-descriptions-item label="当前状态">
-            <el-tag :type="getStatusType(currentVersion?.status)">
-              {{ currentVersion?.status }}
+            <el-tag :type="getStatusType(currentVersionInfo?.status)">
+              {{ currentVersionInfo?.status }}
             </el-tag>
           </el-descriptions-item>
         </el-descriptions>
@@ -60,7 +72,7 @@
           <h4>版本概述</h4>
           <el-input
             type="textarea"
-            :model-value="currentVersion?.summary || ''"
+            :model-value="currentVersionInfo?.summary || ''"
             :rows="3"
             readonly
             placeholder="暂无版本概述"
@@ -70,7 +82,7 @@
       </div>
 
       <!-- 需求列表区域 -->
-      <div v-if="selectedVersion" class="requirements-section">
+      <div v-if="selectedVersionNumber" class="requirements-section">
         <!-- 当前版本需求 -->
         <div class="requirement-group">
           <h3>
@@ -161,40 +173,51 @@ import { useStore } from 'vuex'
 
 const store = useStore()
 const selectedProduct = ref(null)
-const selectedVersion = ref(null)
+const releaseType = ref(null)
+const selectedVersionNumber = ref(null)
 
 // 从 store 获取产品列表
 const products = computed(() => store.state.products || [])
 
-// 根据选中的产品过滤版本
-const filteredVersions = computed(() => {
-  if (!selectedProduct.value) return []
+// 根据选中的产品和发布类型过滤版本
+const filteredVersionNumbers = computed(() => {
+  if (!selectedProduct.value || !releaseType.value) return []
   const product = products.value.find(p => p.id === selectedProduct.value)
-  return product?.versions || []
+  if (!product?.versions) return []
+  
+  // 根据发布类型筛选
+  if (releaseType.value === 'iteration') {
+    return product.versions.filter(v => v.iteration_number)
+  } else {
+    return product.versions.filter(v => v.version_number)
+  }
 })
 
 // 获取当前选中的版本信息
-const currentVersion = computed(() => {
-  if (!selectedVersion.value || !filteredVersions.value.length) return null
-  const version = filteredVersions.value.find(v => v.id === selectedVersion.value)
-  return version || null
+const currentVersionInfo = computed(() => {
+  if (!selectedVersionNumber.value || !filteredVersionNumbers.value.length) return null
+  const versionInfo = filteredVersionNumbers.value.find(v => v.id === selectedVersionNumber.value)
+  if (!versionInfo) return null
+  
+  return versionInfo
 })
 
 // 获取当前版本的需求数据
 const currentRequirements = computed(() => {
-  if (!currentVersion.value) return []
-  return currentVersion.value.requirements || []
+  if (!currentVersionInfo.value) return []
+  return currentVersionInfo.value.requirements || []
 })
 
 // 获取移除/变更的需求数据
 const removedRequirements = computed(() => {
-  if (!currentVersion.value) return []
-  return currentVersion.value.removedRequirements || []
+  if (!currentVersionInfo.value) return []
+  return currentVersionInfo.value.removedRequirements || []
 })
 
 // 处理产品选择变化
 const handleProductChange = () => {
-  selectedVersion.value = null
+  releaseType.value = null
+  selectedVersionNumber.value = null
 }
 
 // 状态样式映射

@@ -12,6 +12,7 @@
           <el-table-column label="最新版本" width="200">
             <template #default="scope">
               <div v-if="scope.row.versions?.length">
+                <div>迭代号: {{ scope.row.versions[0].iteration_number }}</div>
                 <div>版本号: {{ scope.row.versions[0].version_number }}</div>
                 <div>发布日期: {{ scope.row.versions[0].release_date }}</div>
                 <div>状态: {{ scope.row.versions[0].status }}</div>
@@ -49,8 +50,17 @@
 
       <el-dialog v-model="versionDialogVisible" :title="isEditVersion ? '编辑版本' : '新增版本'">
         <el-form :model="versionForm" label-width="100px">
+          <el-form-item label="发布类型" required>
+            <el-select v-model="versionForm.type">
+              <el-option label="迭代" value="iteration" />
+              <el-option label="版本" value="version" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="迭代号" required>
+            <el-input v-model="versionForm.iteration_number" placeholder="请输入迭代号，如: Sprint 2024-01" />
+          </el-form-item>
           <el-form-item label="版本号" required>
-            <el-input v-model="versionForm.version_number" placeholder="请输入版本号" />
+            <el-input v-model="versionForm.version_number" placeholder="请输入版本号，如: v1.2.0" />
           </el-form-item>
           <el-form-item label="发布日期" required>
             <el-date-picker
@@ -68,6 +78,14 @@
               <el-option label="测试中" value="测试中" />
               <el-option label="已发布" value="已发布" />
             </el-select>
+          </el-form-item>
+          <el-form-item label="版本概述">
+            <el-input 
+              type="textarea" 
+              v-model="versionForm.summary" 
+              :rows="3"
+              placeholder="请输入版本概述"
+            />
           </el-form-item>
         </el-form>
         <template #footer>
@@ -97,9 +115,14 @@ const versionDialogVisible = ref(false)
 const isEditVersion = ref(false)
 const currentProductId = ref(null)
 const versionForm = ref({
+  type: 'iteration',
+  iteration_number: '',
   version_number: '',
   release_date: '',
-  status: '规划中'
+  status: '规划中',
+  summary: '',
+  requirements: [],
+  removedRequirements: []
 })
 
 onMounted(() => {
@@ -169,16 +192,83 @@ const addVersion = (product) => {
   isEditVersion.value = false
   currentProductId.value = product.id
   versionForm.value = {
+    type: 'iteration',
+    iteration_number: '',
     version_number: '',
     release_date: '',
-    status: '规划中'
+    status: '规划中',
+    summary: '',
+    requirements: [],
+    removedRequirements: []
   }
   versionDialogVisible.value = true
 }
 
+const generateMockVersions = (productId) => {
+  const versions = []
+  // 生成迭代版本
+  for (let i = 1; i <= 3; i++) {
+    versions.push({
+      id: Date.now() + i,
+      type: 'iteration',
+      iteration_number: `Sprint 2024-0${i}`,
+      version_number: `v1.${i}.0`,
+      release_date: `2024-0${i+2}-15`,
+      status: i === 1 ? '开发中' : (i === 2 ? '规划中' : '已发布'),
+      summary: `2024年第${i}个迭代版本，包含核心功能更新和bug修复`,
+      requirements: [
+        {
+          issue_id: `REQ-${productId}-${i}01`,
+          title: `核心功能${i}：用户管理模块优化`,
+          status: i === 1 ? '开发中' : (i === 2 ? '待开发' : '开发完成'),
+          priority: i,
+          is_key_feature: true
+        },
+        {
+          issue_id: `REQ-${productId}-${i}02`,
+          title: `性能优化${i}：系统响应速度提升`,
+          status: i === 1 ? '开发中' : (i === 2 ? '待开发' : '开发完成'),
+          priority: i + 1
+        }
+      ],
+      removedRequirements: [
+        {
+          issue_id: `REQ-${productId}-${i}03`,
+          title: `已移除的功能${i}`,
+          change_type: i === 1 ? '移除' : (i === 2 ? '推迟' : '变更'),
+          change_reason: `由于${i === 1 ? '技术风险' : (i === 2 ? '优先级调整' : '需求变更')}`
+        }
+      ]
+    })
+  }
+  
+  // 生成正式版本
+  versions.push({
+    id: Date.now() + 4,
+    type: 'version',
+    iteration_number: 'Sprint 2024-Q1',
+    version_number: 'v2.0.0',
+    release_date: '2024-03-31',
+    status: '规划中',
+    summary: '2024年第一季度正式版本发布，包含重大功能更新',
+    requirements: [
+      {
+        issue_id: `REQ-${productId}-401`,
+        title: '新版本核心功能：AI助手集成',
+        status: '待开发',
+        priority: 1,
+        is_key_feature: true
+      }
+    ],
+    removedRequirements: []
+  })
+  
+  return versions
+}
+
 const saveVersion = async () => {
   try {
-    if (!versionForm.value.version_number || !versionForm.value.release_date) {
+    if (!versionForm.value.iteration_number || !versionForm.value.version_number || !versionForm.value.release_date) {
       return ElMessage.warning('请填写完整信息')
     }
 
@@ -189,10 +279,20 @@ const saveVersion = async () => {
       if (!product.versions) {
         product.versions = []
       }
+      
+      // 添加新版本到数组开头
       product.versions.unshift({
-        id: Date.now(), // 模拟 ID
-        ...versionForm.value
+        id: Date.now(),
+        ...versionForm.value,
+        requirements: [],
+        removedRequirements: []
       })
+
+      // 如果是第一次添加版本，生成一些模拟数据
+      if (product.versions.length === 1) {
+        product.versions = generateMockVersions(product.id)
+      }
+
       store.commit('SET_PRODUCTS', [...products.value])
     }
 
