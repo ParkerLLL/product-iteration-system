@@ -1,7 +1,7 @@
 <template>
   <div class="calendar-view">
     <div class="calendar-header">
-      <h2 class="page-title">产品发布日历</h2>
+      <h2 class="page-title">版本/迭代 预计发布日历</h2>
       <div class="calendar-legend">
         <div class="legend-item">
           <div class="legend-color today-color"></div>
@@ -25,6 +25,36 @@
       </div>
     </div>
     
+    <!-- 添加筛选器 -->
+    <div class="calendar-toolbar">
+      <el-select v-model="selectedDepartment" placeholder="选择一级部门" @change="handleDepartmentChange">
+        <el-option v-for="dept in departments" :key="dept.value" :label="dept.label" :value="dept.value" />
+      </el-select>
+
+      <el-select v-model="selectedSubDepartment" placeholder="选择二级部门" :disabled="!selectedDepartment" @change="handleSubDepartmentChange">
+        <el-option v-for="subDept in subDepartments" :key="subDept.value" :label="subDept.label" :value="subDept.value" />
+      </el-select>
+
+      <el-select v-model="selectedProduct" placeholder="选择项目空间" :disabled="!selectedDepartment" @change="handleProductChange">
+        <el-option v-for="product in filteredProducts" :key="product.code" :label="product.project_name" :value="product.code" />
+      </el-select>
+
+      <el-select v-model="releaseType" placeholder="选择发布类型" :disabled="!selectedRequirement">
+        <el-option label="迭代" value="iteration" />
+        <el-option label="版本" value="version" />
+      </el-select>
+
+      <el-select v-model="selectedVersionNumber" :placeholder="releaseType === 'iteration' ? '选择迭代' : '选择版本'" :disabled="!releaseType || !selectedRequirement" @change="handleVersionChange">
+        <el-option v-for="ver in filteredVersionNumbers" :key="ver.id" :label="ver.version_name" :value="ver.id">
+          <span>{{ ver.version_name }}</span>
+          <span class="version-date">{{ formatDate(ver.release_date) }}</span>
+          <el-tag size="small" :type="getStatusType(ver.status)">{{ ver.status }}</el-tag>
+        </el-option>
+      </el-select>
+
+      <el-button type="primary" @click="handleSearch" :disabled="!selectedVersionNumber || !selectedRequirement">查询</el-button>
+    </div>
+
     <!-- 版本明细表 -->
     <div v-if="currentDate" class="version-details">  
       <h3>{{ formatDate(currentDate) }}的版本计划</h3>
@@ -71,43 +101,8 @@
       </el-empty>
     </div>
 
-    <!-- 添加视图切换和过滤器 -->
-    <div class="calendar-toolbar">
-      <el-select
-        v-model="selectedProducts"
-        multiple
-        collapse-tags
-        placeholder="选择产品"
-        @change="handleProductFilter"
-      >
-        <el-option
-          v-for="product in products"
-          :key="product.id"
-          :label="product.name"
-          :value="product.id"
-        />
-      </el-select>
+  
 
-      <el-select
-        v-model="selectedStatus"
-        multiple
-        collapse-tags
-        placeholder="选择状态"
-        @change="handleStatusFilter"
-      >
-        <el-option
-          v-for="status in statusOptions"
-          :key="status"
-          :label="status"
-          :value="status"
-        />
-      </el-select>
-
-      <el-button @click="exportCalendar">
-        <el-icon><Download /></el-icon>
-        导出日历
-      </el-button>
-    </div>
 
     <!-- 添加统计信息卡片 -->
     <div class="statistics-cards">
@@ -127,7 +122,7 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useStore } from 'vuex'
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
@@ -137,54 +132,58 @@ import { ElMessageBox } from 'element-plus'
 import tippy from 'tippy.js'
 import { Download } from '@element-plus/icons-vue'
 import * as XLSX from 'xlsx'
+import { getCalendarEvents } from '../api/products' // 确保导入 API 函数
 
 const store = useStore()
 const calendarRef = ref(null)
 const currentDate = ref(null)
-const activeProducts = ref([])
+const activeProducts = ref([]) // 当前展开的产品
+const events = ref([])
 
 // 获取产品列表
 const products = computed(() => store.state.products)
 
-// 在组件挂载时获取数据
-onMounted(async () => {
-  console.log('Calendar component mounted')
-  await store.dispatch('fetchProducts')
-  console.log('Products loaded:', store.state.products)
-  console.log('Calendar events:', store.state.calendarEvents)
-})
+// 过滤器处理
+const selectedProducts = ref([]);
+const selectedStatus = ref([]);
+const statusOptions = ['规划中', '开发中', '测试中', '已发布'];
 
-const events = computed(() => store.state.calendarEvents)
+const filteredEvents = computed(() => {
+  let filtered = events.value;
+  if (selectedProducts.value.length) {
+    filtered = filtered.filter(event => 
+      selectedProducts.value.includes(event.extendedProps.productId)
+    );
+  }
+  if (selectedStatus.value.length) {
+    filtered = filtered.filter(event => 
+      selectedStatus.value.includes(event.extendedProps.status)
+    );
+  }
+  return filtered;
+});
 
 // 获取当前选中日期的所有版本
 const currentDateVersions = computed(() => {
-  if (!currentDate.value) return []
-  return store.state.products.flatMap(product => 
-    (product.versions || [])
-      .filter(version => version.release_date === currentDate.value)
-      .map(version => ({
-        ...version,
-        productId: product.id,
-        productName: product.name
-      }))
-  )
-})
+  if (!currentDate.value) return [];
+  return filteredEvents.value.filter(event => event.start === currentDate.value);
+});
 
 // 按产品分组的版本
 const groupedVersions = computed(() => {
-  const groups = {}
+  const groups = {};
   currentDateVersions.value.forEach(version => {
     if (!groups[version.productId]) {
       groups[version.productId] = {
         productId: version.productId,
         productName: version.productName,
         versions: []
-      }
+      };
     }
-    groups[version.productId].versions.push(version)
-  })
-  return Object.values(groups)
-})
+    groups[version.productId].versions.push(version);
+  });
+  return Object.values(groups);
+});
 
 const getStatusType = (status) => {
   const types = {
@@ -220,55 +219,109 @@ const handleDateChange = (value) => {
   }
 }
 
-// 添加过滤状态
-const selectedProducts = ref([])
-const selectedStatus = ref([])
-const statusOptions = ['规划中', '开发中', '测试中', '已发布']
+// 获取版本/迭代的发布数据
+const versions = computed(() => {
+  return store.state.versions || []; // 假设版本数据存储在 Vuex 的 state 中
+});
 
-// 过滤事件
-const filteredEvents = computed(() => {
-  let filtered = events.value
-  if (selectedProducts.value.length) {
-    filtered = filtered.filter(event => 
-      selectedProducts.value.includes(event.extendedProps.productId)
-    )
+// 定义 selectedRequirement
+const selectedRequirement = ref(null); // 或者根据需要使用 computed
+
+// 更新获取日历事件的方法
+const fetchProducts = async () => {
+  try {
+    const response = await fetch('http://localhost:8000/api/products/');
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const productsData = await response.json();
+
+    // 调试输出产品数据
+    console.log('获取的产品数据:', productsData);
+
+    // 检查返回的数据结构
+    if (!Array.isArray(productsData.data)) {
+      console.error('返回的数据不是数组:', productsData.data);
+      return;
+    }
+
+    // 处理产品数据并获取版本事件
+    const versionEvents = productsData.data.flatMap(product => 
+      product.projects.flatMap(project => 
+        project.versions.map(version => ({
+          title: version.name,
+          start: version.release_date,
+          extendedProps: {
+            status: version.status,
+            productName: project.name,
+            version_number: version.name
+          }
+        }))
+      )
+    );
+
+    // 调试输出版本事件
+    console.log('获取的版本事件:', versionEvents);
+
+    // 合并事件
+    events.value = versionEvents;
+    return productsData.data;
+  } catch (error) {
+    console.error('获取产品数据失败:', error);
   }
-  if (selectedStatus.value.length) {
-    filtered = filtered.filter(event => 
-      selectedStatus.value.includes(event.extendedProps.status)
-    )
-  }
-  return filtered
-})
+};
+
+const fetchCalendarEvents = async () => {
+  // 移除事件数据的获取
+  // 直接返回，不获取事件数据
+  return;
+};
+
+// 递归函数来计算每个部门的版本总数
+const calculateVersionCounts = (departments) => {
+  const counts = {};
+  departments.forEach(department => {
+    const departmentName = department.name; // 获取一级部门名称
+    const projects = department.projects || []; // 获取项目列表
+
+    // 统计该部门的版本数量
+    let versionCount = 0;
+    projects.forEach(project => {
+      versionCount += (project.versions ? project.versions.length : 0); // 统计版本数量
+    });
+
+    counts[departmentName] = versionCount; // 保存部门名称和版本数量
+  });
+  return counts;
+};
+
+// 计算每个部门的版本总数
+const versionCountsByDepartment = computed(() => {
+  return calculateVersionCounts(products.value); // 使用递归函数计算版本数量
+});
 
 const calendarOptions = {
   plugins: [dayGridPlugin, interactionPlugin],
   initialView: 'dayGridMonth',
   locale: zhCnLocale,
-  events: filteredEvents,
+  events: events.value, // 将事件数据传递给 FullCalendar
   dateClick: (info) => {
-    currentDate.value = info.dateStr
+    currentDate.value = info.dateStr;
     document.querySelectorAll('.fc-day-selected').forEach(el => {
-      el.classList.remove('fc-day-selected')
-    })
-    info.dayEl.classList.add('fc-day-selected')
+      el.classList.remove('fc-day-selected');
+    });
+    info.dayEl.classList.add('fc-day-selected');
   },
   eventContent: (arg) => {
-    const title = `${arg.event.extendedProps.productName || ''} ${arg.event.extendedProps.version_number || ''}`;
+    const releaseDate = arg.event.extendedProps.release_date; // 获取事件的发布日期
+    const versionCount = versionCountsByDepartment.value[releaseDate] || 0; // 获取该日期的版本总数
+
+    // 调试输出事件内容
+    console.log('事件内容:', arg.event);
+
     return {
-      html: `
-        <div class="fc-event-main-content" style="padding: 2px 4px;">
-          <div class="event-title" style="font-size: 12px; font-weight: bold; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-            ${title}
-          </div>
-          <div class="event-status" style="text-align: right;">
-            <span class="status-badge status-${arg.event.extendedProps.status}" style="font-size: 11px; padding: 1px 4px; border-radius: 2px;">
-              ${arg.event.extendedProps.status}
-            </span>
-          </div>
-        </div>
-      `
-    }
+      html: `<div class='fc-event-main-content'>\n        <div class='event-title'>\n          <span>预计发布版本/迭代: ${versionCount}</span>\n        </div>\n      </div>`
+    };
   },
   eventDidMount: (info) => {
     try {
@@ -295,44 +348,9 @@ const calendarOptions = {
   eventOrder: 'title',
   dayCellDidMount: (arg) => {
     try {
-      // 格式化日期为 YYYY-MM-DD 格式
-      const year = arg.date.getFullYear();
-      const month = String(arg.date.getMonth() + 1).padStart(2, '0');
-      const day = String(arg.date.getDate()).padStart(2, '0');
-      const dateStr = `${year}-${month}-${day}`;
-      
-      // 获取当天的所有版本
-      const dayEvents = filteredEvents.value.filter(event => event.date === dateStr);
-      
-      if (dayEvents.length > 0) {
-        // 设置紫色背景
-        arg.el.style.backgroundColor = 'rgba(128, 0, 128, 0.2)';
-        
-        // 修改日期格子的内容
-        const dayTop = arg.el.querySelector('.fc-daygrid-day-top');
-        if (dayTop) {
-          const dayNumber = dayTop.querySelector('.fc-daygrid-day-number');
-          if (dayNumber) {
-            dayNumber.innerHTML = `
-              <div class="fc-daygrid-day-top">
-                <a class="fc-daygrid-day-number">${day}日</a>
-              </div>
-              <div class="day-versions">
-                ${dayEvents.map(event => `
-                  <div class="day-version-item">
-                    <span class="version-product">${event.extendedProps.productName}</span>
-                    <span class="version-number">${event.extendedProps.version_number}</span>
-                  </div>
-                `).join('')}
-              </div>
-            `;
-          }
-        }
-      }
-      
-      arg.el.style.height = '120px';
+      arg.el.style.height = '120px'
     } catch (error) {
-      console.error('Error in dayCellDidMount:', error);
+      console.error('Error in dayCellDidMount:', error)
     }
   },
   handleWindowResize: true,
@@ -380,43 +398,28 @@ const handleStatusFilter = (value) => {
 }
 
 // 添加统计计算
-const statistics = computed(() => {
-  const now = new Date()
-  const currentYear = now.getFullYear()
-  const currentMonth = now.getMonth()
-
-  // 获取当月的开始和结束日期
-  const monthStart = new Date(currentYear, currentMonth, 1)
-  const monthEnd = new Date(currentYear, currentMonth + 1, 0)
-
-  // 过滤当月的发布计划
-  const currentMonthEvents = events.value.filter(event => {
-    const eventDate = new Date(event.date)
-    return eventDate >= monthStart && eventDate <= monthEnd
-  })
-
-  // 按状态统计所有版本
-  const statusCount = events.value.reduce((acc, event) => {
-    const status = event.extendedProps.status
-    acc[status] = (acc[status] || 0) + 1
-    return acc
-  }, {})
-
-  return [
-    {
-      label: '本月发布计划',
-      value: currentMonthEvents.length
-    },
-    {
-      label: '规划中版本',
-      value: statusCount['规划中'] || 0
-    },
-    {
-      label: '开发中版本',
-      value: statusCount['开发中'] || 0
-    }
-  ]
-})
+const statistics = computed(() => [
+  {
+    label: '本月发布计划',
+    value: events.value.filter(event => {
+      const date = new Date(event.date)
+      const now = new Date()
+      return date.getMonth() === now.getMonth()
+    }).length
+  },
+  {
+    label: '未开始版本',
+    value: events.value.filter(event => 
+      event.extendedProps.status === '规划中'
+    ).length
+  },
+  {
+    label: '开发中版本',
+    value: events.value.filter(event => 
+      event.extendedProps.status === '开发中'
+    ).length
+  }
+])
 
 const exportCalendar = () => {
   const data = events.value.map(event => ({
@@ -432,15 +435,53 @@ const exportCalendar = () => {
   XLSX.writeFile(wb, '产品发布日历.xlsx')
 }
 
-// 监听事件数据变化
-watch(() => store.state.calendarEvents, (newEvents) => {
-  console.log('Calendar events updated:', newEvents)
-}, { deep: true })
+const selectedDepartment = ref(null);
+const selectedSubDepartment = ref(null);
+const selectedProduct = ref(null);
+const releaseType = ref(null);
+const selectedVersionNumber = ref(null);
 
-// 监听过滤后的事件
-watch(filteredEvents, (newEvents) => {
-  console.log('Filtered events updated:', newEvents)
-}, { deep: true })
+const departments = computed(() => store.state.departments || []);
+const subDepartments = computed(() => {
+  return selectedDepartment.value ? store.state.subDepartments[selectedDepartment.value] || [] : [];
+});
+const filteredProducts = computed(() => {
+  return selectedDepartment.value ? store.state.products.filter(product => product.department === selectedDepartment.value) : [];
+});
+
+const handleDepartmentChange = () => {
+  selectedSubDepartment.value = null; // Reset sub-department when department changes
+  selectedProduct.value = null; // Reset product when department changes
+};
+
+const handleSubDepartmentChange = () => {
+  selectedProduct.value = null; // Reset product when sub-department changes
+};
+
+const handleProductChange = () => {
+  // 处理产品变化逻辑
+};
+
+const handleVersionChange = () => {
+  // 处理版本变化逻辑
+};
+
+const handleSearch = () => {
+  // 根据选择的筛选器更新日历事件
+};
+
+// 定义 filteredVersionNumbers
+const filteredVersionNumbers = computed(() => {
+  return versions.value.filter(version => {
+    // 根据需要添加过滤条件，例如根据 selectedProduct 或 releaseType
+    return true; // 这里可以根据实际需求进行过滤
+  });
+});
+
+// 在 mounted 钩子中调用 fetchCalendarEvents
+onMounted(() => {
+  fetchCalendarEvents();
+});
 </script>
 
 <style>
@@ -491,46 +532,44 @@ watch(filteredEvents, (newEvents) => {
 /* 事件样式 */
 .calendar-view .fc-event {
   margin: 2px 0;
-  padding: 2px !important;
-  border: none !important;
+  padding: 6px 8px;
+  border: none;
   border-radius: 4px;
-  background: white !important;
+  background: white;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  cursor: pointer;
-}
-
-.calendar-view .fc-event-main {
-  padding: 0 !important;
-}
-
-.calendar-view .fc-event-main-content {
-  width: 100%;
-  min-height: 20px;
 }
 
 .calendar-view .event-title {
-  font-weight: bold !important;
-  font-size: 12px !important;
-  color: #333 !important;
-  margin-bottom: 2px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1.2;
-  padding: 0 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.calendar-view .product-name {
+  font-weight: bold;
+  color: #333;
+  font-size: 0.9em;
+}
+
+.calendar-view .version-number {
+  color: #666;
+  font-size: 0.85em;
+  background: #f5f7fa;
+  padding: 1px 4px;
+  border-radius: 3px;
 }
 
 .calendar-view .event-status {
-  text-align: right;
-  line-height: 1;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .calendar-view .status-badge {
-  font-size: 11px !important;
-  padding: 1px 4px !important;
-  border-radius: 2px;
+  font-size: 0.75em;
+  padding: 2px 6px;
+  border-radius: 3px;
   display: inline-block;
-  line-height: 1.2;
 }
 
 /* 状态样式 */
@@ -616,54 +655,6 @@ watch(filteredEvents, (newEvents) => {
   width: 80px;
   color: #666;
 }
-
-/* 日期格子中的版本信息样式 */
-.calendar-view .day-versions {
-  margin-top: 4px;
-}
-
-.calendar-view .day-version-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 12px;
-  margin: 2px 0;
-  padding: 2px 4px;
-  background: white;
-  border-radius: 3px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-}
-
-.calendar-view .version-product {
-  color: #333;
-  font-weight: 500;
-  margin-right: 4px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.calendar-view .version-number {
-  color: #666;
-  font-size: 11px;
-  background: #f5f7fa;
-  padding: 1px 4px;
-  border-radius: 2px;
-  white-space: nowrap;
-}
-
-/* 调整日期格子的内边距 */
-.calendar-view .fc .fc-daygrid-day-frame {
-  padding: 4px !important;
-}
-
-/* 调整日期数字的样式 */
-.calendar-view .fc .fc-daygrid-day-number {
-  padding: 2px 4px;
-  font-size: 12px;
-  color: #333;
-  font-weight: 500;
-}
 </style>
 
 <style scoped>
@@ -691,6 +682,13 @@ watch(filteredEvents, (newEvents) => {
   text-align: center;
   font-size: 24px;
   margin: 0;
+}
+
+.filter-container {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 20px;
 }
 
 .calendar-legend {

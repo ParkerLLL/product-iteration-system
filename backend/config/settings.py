@@ -12,18 +12,36 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
-# 将数据库配置改为 MySQL
+# 本地数据库配置
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'product_iteration',
-        'USER': 'django',
-        'PASSWORD': 'django123',
-        'HOST': '127.0.0.1',  # 使用 IP 而不是 localhost
-        'PORT': '3306',
+        'NAME': 'product_iteration',  # 本地数据库名
+        'USER': 'lipeng',              # 本地MySQL用户名
+        'PASSWORD': '1q2w3e',        # 本地MySQL密码
+        'HOST': 'localhost',         # 本地主机
+        'PORT': '3306',             # MySQL默认端口
         'OPTIONS': {
             'charset': 'utf8mb4',
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'"
+            'init_command': 'SET default_storage_engine=INNODB',
+            'use_unicode': True,
+        },
+        'TEST': {
+            'CHARSET': 'utf8mb4',
+            'COLLATION': 'utf8mb4_unicode_ci',
+        }
+    },
+    'remote': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'devops_ci_vteam',  # 远程数据库名
+        'USER': 'lipeng_read',      # 远程只读用户
+        'PASSWORD': '9cL4GkNXsCWQXslf',  # 远程密码
+        'HOST': '192.168.13.68',    # 远程服务器IP
+        'PORT': '3306',             # 端口号
+        'OPTIONS': {
+            'charset': 'utf8mb4',
+            'init_command': 'SET default_storage_engine=INNODB',
+            'use_unicode': True,
         }
     }
 }
@@ -38,7 +56,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
-    'products',
+    'products.apps.ProductsConfig',
 ]
 
 MIDDLEWARE = [
@@ -53,10 +71,7 @@ MIDDLEWARE = [
 ]
 
 # CORS设置
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
+CORS_ALLOW_ALL_ORIGINS = True  # 开发环境下允许所有源
 
 CORS_ALLOW_METHODS = [
     'DELETE',
@@ -81,9 +96,6 @@ CORS_ALLOW_HEADERS = [
 
 # 允许携带认证信息
 CORS_ALLOW_CREDENTIALS = True
-
-# 添加这些设置
-CORS_ALLOW_ALL_ORIGINS = True  # 开发环境下可以允许所有源
 
 ROOT_URLCONF = 'config.urls'
 
@@ -139,3 +151,29 @@ LOGGING = {
         },
     },
 } 
+
+# 添加这个配置
+DATABASE_ROUTERS = []
+
+# 修改 SESSION_ENGINE 配置
+SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
+SESSION_CACHE_ALIAS = 'default'
+
+# 添加缓存配置
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
+    }
+}
+
+# REST framework settings
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [],
+    'DEFAULT_PERMISSION_CLASSES': [],
+    'UNAUTHENTICATED_USER': None
+}
+
+# 添加MySQL版本兼容性配置
+DATABASE_ROUTERS = []
+SILENCED_SYSTEM_CHECKS = ['django.db.backends.mysql.W003']

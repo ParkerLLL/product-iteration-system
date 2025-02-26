@@ -1,4 +1,5 @@
 import { createStore } from 'vuex'
+import { getProducts, getCalendarEvents, getProjectInfo } from '../api/products'
 
 // 生成模拟数据的辅助函数
 const generateMockData = () => {
@@ -102,91 +103,44 @@ const getSavedProducts = () => {
 
 export default createStore({
     state: {
-        products: [],
-        versions: [],
-        requirements: [],
-        calendarEvents: [] // 新增日历事件状态
+        products: null,
+        calendarEvents: []
     },
     mutations: {
         SET_PRODUCTS(state, products) {
             state.products = products
-            // 保存到 localStorage
-            localStorage.setItem('products', JSON.stringify(products))
-
-            // 更新日历事件，确保所有版本都显示
-            state.calendarEvents = products.flatMap(product =>
-                (product.versions || []).map(version => ({
-                    id: `${product.id}-${version.id}`,
-                    title: `${product.name} ${version.version_number}`,
-                    date: version.release_date,
-                    extendedProps: {
-                        productId: product.id,
-                        productName: product.name,
-                        versionId: version.id,
-                        status: version.status,
-                        version_number: version.version_number
-                    },
-                    allDay: true,
-                    display: 'block'
-                }))
-            ).sort((a, b) => {
-                // 首先按日期排序
-                const dateCompare = new Date(a.date) - new Date(b.date)
-                if (dateCompare !== 0) return dateCompare
-                // 如果日期相同，按产品名和版本号排序
-                const productCompare = a.extendedProps.productName.localeCompare(b.extendedProps.productName)
-                if (productCompare !== 0) return productCompare
-                return a.extendedProps.version_number.localeCompare(b.extendedProps.version_number)
-            })
         },
-        SET_VERSIONS(state, versions) {
-            state.versions = versions
-        },
-        SET_REQUIREMENTS(state, requirements) {
-            state.requirements = requirements
+        SET_CALENDAR_EVENTS(state, events) {
+            state.calendarEvents = events
         }
     },
     actions: {
-        // 模拟获取产品列表
+        // 获取产品列表
         async fetchProducts({ commit }) {
-            // 模拟 API 延迟
-            await new Promise(resolve => setTimeout(resolve, 300))
-            commit('SET_PRODUCTS', getSavedProducts())
-        },
-        async fetchVersions({ commit }, productId = null) {
             try {
-                const url = productId ? `/versions/?product=${productId}` : '/versions/'
-                const response = await api.get(url)
-                commit('SET_VERSIONS', response.data)
+                const response = await getProducts()
+                commit('SET_PRODUCTS', response.data)
             } catch (error) {
-                console.error('Error fetching versions:', error)
+                console.error('获取产品列表失败:', error)
+                throw error
             }
         },
-        // 模拟创建产品
-        async createProduct({ commit, state }, product) {
-            await new Promise(resolve => setTimeout(resolve, 300))
-            const newProduct = {
-                id: state.products.length + 1,
-                ...product,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
+        // 获取日历事件
+        async fetchCalendarEvents({ commit }) {
+            try {
+                const events = await getCalendarEvents()
+                // 获取项目空间信息
+                for (const event of events) {
+                    const projectCode = event.id.split('_')[0]
+                    const projectInfo = await getProjectInfo(projectCode)
+                    event.project_name = projectInfo.project_name
+                    event.department = projectInfo.department
+                }
+                commit('SET_CALENDAR_EVENTS', events)
+            } catch (error) {
+                console.error('获取日历事件失败:', error)
+                throw error
             }
-            commit('SET_PRODUCTS', [...state.products, newProduct])
-            return newProduct
-        },
-        // 模拟更新产品
-        async updateProduct({ commit, state }, { id, data }) {
-            await new Promise(resolve => setTimeout(resolve, 300))
-            const products = state.products.map(p =>
-                p.id === id ? { ...p, ...data, updated_at: new Date().toISOString() } : p
-            )
-            commit('SET_PRODUCTS', products)
-        },
-        // 模拟删除产品
-        async deleteProduct({ commit, state }, productId) {
-            await new Promise(resolve => setTimeout(resolve, 300))
-            const products = state.products.filter(p => p.id !== productId)
-            commit('SET_PRODUCTS', products)
         }
     }
 }) 

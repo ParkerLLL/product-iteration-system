@@ -1,45 +1,41 @@
 <script setup>
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
-import { Document, Calendar, List } from '@element-plus/icons-vue'
-
-const route = useRoute()
-const currentPageTitle = computed(() => {
-  const titles = {
-    '/products': '产品管理',
-    '/calendar': '发布日历',
-    '/requirements': '需求明细'
-  }
-  return titles[route.path] || ''
-})
+import { Calendar, List } from '@element-plus/icons-vue'
 </script>
 
 <template>
-  <div class="app-container">
-    <el-menu
-      mode="horizontal"
-      :router="true"
-      :default-active="$route.path"
-      class="nav-menu"
-    >
-      <div class="logo">产品迭代系统</div>
-      <el-menu-item index="/products">
-        <el-icon><Document /></el-icon>
-        <span>产品管理</span>
-      </el-menu-item>
-      <el-menu-item index="/calendar">
-        <el-icon><Calendar /></el-icon>
-        <span>发布日历</span>
-      </el-menu-item>
-      <el-menu-item index="/requirements">
-        <el-icon><List /></el-icon>
-        <span>需求明细</span>
-      </el-menu-item>
-    </el-menu>
-    <div class="main-content">
-      <router-view></router-view>
-    </div>
-  </div>
+  <el-container class="app-container">
+    <el-aside width="200px">
+      <el-menu
+        router
+        :default-active="$route.path"
+      >
+        <el-menu-item index="/calendar">
+          <el-icon><Calendar /></el-icon>
+          <span>发布日历</span>
+        </el-menu-item>
+        <el-menu-item index="/requirements">
+          <el-icon><List /></el-icon>
+          <span>需求明细</span>
+        </el-menu-item>
+      </el-menu>
+    </el-aside>
+    <el-container>
+      <el-main>
+        <router-view v-slot="{ Component }">
+          <Suspense>
+            <template #default>
+              <div>
+                <component :is="Component" />
+              </div>
+            </template>
+            <template #fallback>
+              <div>加载中...</div>
+            </template>
+          </Suspense>
+        </router-view>
+      </el-main>
+    </el-container>
+  </el-container>
 </template>
 
 <style>
@@ -104,8 +100,8 @@ html, body {
 
 .main-content {
   padding: 72px 24px 24px; /* 减小顶部内边距 */
-  max-width: 1600px;
-  margin: 0 auto;
+  max-width: 80%; /* 设置最大宽度为80% */
+  margin: 0 auto; /* 居中对齐 */
   box-sizing: border-box;
 }
 
@@ -148,5 +144,13 @@ html, body {
   .nav-content {
     padding: 0 16px;
   }
+}
+
+.el-aside {
+  background-color: #f5f7fa;
+}
+
+.el-main {
+  padding: 20px;
 }
 </style>
