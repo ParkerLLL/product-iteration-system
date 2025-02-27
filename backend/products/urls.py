@@ -10,4 +10,5 @@ urlpatterns = [
     path('', include(router.urls)),
     path('api/requirements/version/<str:version_name>/', version_requirements, name='version-requirements'),
     path('api/requirements/sprint/<str:sprint_name>/', sprint_requirements, name='sprint-requirements'),
+
 ] 

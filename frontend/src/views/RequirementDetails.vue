@@ -36,13 +36,13 @@
             <el-select 
               v-model="selectedProduct" 
               placeholder="选择项目空间"
-              :disabled="!selectedDepartment"
+              :disabled="!selectedSubDepartment"
               @change="handleProductChange"
             >
               <el-option
                 v-for="product in filteredProducts"
                 :key="product.code"
-                :label="product.project_name"
+                :label="product.name || '未知产品'"
                 :value="product.code"
               />
             </el-select>
@@ -325,61 +325,32 @@ const departments = computed(() => {
   }));
 })
 
-// 添加二级部门列表计算属性
+// 计算属性：获取子部门
 const subDepartments = computed(() => {
-  const rawData = store.state.products;
-  if (!rawData?.data || !selectedDepartment.value) return [];
-  
-  const dept = rawData.data.find(d => d.name === selectedDepartment.value);
-  if (!dept) return [];
-  
-  return dept.sub_departments.map(subDept => ({
+  const rawData = store.state.products
+  if (!rawData?.data || !selectedDepartment.value) return []
+
+  const dept = rawData.data.find(d => d.name === selectedDepartment.value)
+  return dept ? dept.sub_departments.map(subDept => ({
     value: subDept.name,
     label: subDept.name
-  }));
+  })) : []
 })
 
-// 添加 filteredProducts 计算属性
+// 计算属性：根据选择的子部门过滤项目空间
 const filteredProducts = computed(() => {
-  const rawData = store.state.products;
-  console.log('原始数据:', rawData);
-  
-  if (!rawData?.data || !selectedDepartment.value) {
-    console.log('数据为空或未选择部门');
-    return [];
-  }
-  
-  const dept = rawData.data.find(d => d.name === selectedDepartment.value);
-  console.log('选中的部门:', dept);
-  
-  if (!dept) {
-    console.log('未找到对应部门');
-    return [];
-  }
-  
-  // 如果选择了二级部门，返回二级部门的项目
-  if (selectedSubDepartment.value) {
-    const subDept = dept.sub_departments.find(sd => sd.name === selectedSubDepartment.value);
-    console.log('选中的子部门:', subDept);
-    if (subDept?.projects) {
-      return subDept.projects.map(project => ({
-        code: project.code,
-        project_name: project.project_name,
-        versions: project.versions || []
-      }));
-    }
-    return [];
-  }
-  
-  // 如果没有选择二级部门，返回主部门的项目
-  if (dept.projects) {
-    return dept.projects.map(project => ({
-      code: project.code,
-      project_name: project.project_name,
-      versions: project.versions || []
-    }));
-  }
-  return [];
+  const rawData = store.state.products
+  if (!rawData?.data || !selectedSubDepartment.value) return []
+
+  const dept = rawData.data.find(d => d.name === selectedDepartment.value)
+  if (!dept) return []
+
+  const subDept = dept.sub_departments.find(sd => sd.name === selectedSubDepartment.value)
+  return subDept ? subDept.projects.map(project => ({
+    name: project.name, // 使用项目名称
+    code: project.code,
+    versions: project.versions || []
+  })) : []
 })
 
 // 修改 products computed 属性为 allProducts
@@ -1199,3 +1170,8 @@ watch(
   padding: 0;
 }
 </style> 
+
+
+
+
+

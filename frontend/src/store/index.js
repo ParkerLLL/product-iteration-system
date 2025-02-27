@@ -129,14 +129,20 @@ export default createStore({
         async fetchCalendarEvents({ commit }) {
             try {
                 const events = await getCalendarEvents()
-                // 获取项目空间信息
-                for (const event of events) {
-                    const projectCode = event.id.split('_')[0]
-                    const projectInfo = await getProjectInfo(projectCode)
-                    event.project_name = projectInfo.project_name
-                    event.department = projectInfo.department
-                }
-                commit('SET_CALENDAR_EVENTS', events)
+                // 处理返回的数据
+                const processedEvents = events.map(event => ({
+                    id: event.id,
+                    title: event.title,
+                    start: event.date,
+                    extendedProps: {
+                        status: event.extendedProps.status,
+                        projectSpaceId: event.extendedProps.projectSpaceId,
+                        projectSpace: event.extendedProps.projectSpace,
+                        department: event.extendedProps.department,
+                        type: event.extendedProps.type,
+                    }
+                }))
+                commit('SET_CALENDAR_EVENTS', processedEvents)
             } catch (error) {
                 console.error('获取日历事件失败:', error)
                 throw error

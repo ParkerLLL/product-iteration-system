@@ -58,7 +58,7 @@
     <!-- 版本明细表 -->
     <div v-if="currentDate" class="version-details">  
       <h3>{{ formatDate(currentDate) }}的版本计划</h3>
-      <div v-if="currentDateVersions.length">
+      <div v-if="currentDateVersionplan.length">
         <el-collapse v-model="activeProducts">
           <el-collapse-item 
             v-for="group in groupedVersions" 
@@ -101,12 +101,15 @@
       </el-empty>
     </div>
 
-  
-
-
     <!-- 添加统计信息卡片 -->
     <div class="statistics-cards">
-      <el-card v-for="stat in statistics" :key="stat.label" class="stat-card">
+      <el-card class="stat-card" style="flex: 1 1 100%;">
+        <div class="stat-value">{{ statistics[0].value }}</div>
+        <div class="stat-label">{{ statistics[0].label }}</div>
+      </el-card>
+    </div>
+    <div class="statistics-cards">
+      <el-card v-for="stat in statistics.slice(1)" :key="stat.label" class="stat-card">
         <div class="stat-value">{{ stat.value }}</div>
         <div class="stat-label">{{ stat.label }}</div>
       </el-card>
@@ -116,8 +119,28 @@
       ref="calendarRef"
       :options="calendarOptions"
       class="calendar"
+      @dateClick="handleDateClick"
       @error="handleError"
     />
+
+    <!-- 弹窗 -->
+    <el-dialog :visible.sync="dialogVisible" title="选中日期的版本计划">
+      <template #default>
+        <div v-if="currentDateFilteredVersions.length">
+          <el-table :data="currentDateFilteredVersions" style="width: 100%">
+            <el-table-column prop="title" label="版本名称" />
+            <el-table-column prop="start" label="发布日期" />
+            <el-table-column prop="extendedProps.status" label="状态" />
+          </el-table>
+        </div>
+        <div v-else>
+          <p>该日期没有版本计划。</p>
+        </div>
+      </template>
+      <template #footer>
+        <el-button @click="dialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -132,16 +155,50 @@ import { ElMessageBox } from 'element-plus'
 import tippy from 'tippy.js'
 import { Download } from '@element-plus/icons-vue'
 import * as XLSX from 'xlsx'
-import { getCalendarEvents } from '../api/products' // 确保导入 API 函数
+import { getProducts, getCalendarEvents } from '../api/products' // 导入 API 方法
 
 const store = useStore()
 const calendarRef = ref(null)
 const currentDate = ref(null)
 const activeProducts = ref([]) // 当前展开的产品
-const events = ref([])
+const products = ref([]) // 存储产品数据
+const events = computed(() => store.state.calendarEvents)
+const calendarEvents = ref([]) // 存储日历事件
+const dialogVisible = ref(false) // 控制弹窗的显示状态
+
+// 确保只声明一次 currentDateFilteredVersions
+const currentDateFilteredVersions = computed(() => {
+  if (!currentDate.value) return [];
+  return calendarEvents.value.filter(event => event.start === currentDate.value);
+});
 
 // 获取产品列表
-const products = computed(() => store.state.products)
+const fetchProducts = async () => {
+  try {
+    const response = await getProducts() // 调用获取产品的 API
+    products.value = response.data // 假设返回的数据结构是 { data: [...] }
+    console.log('获取的产品数据:', products.value);
+  } catch (error) {
+    console.error('获取产品数据失败:', error);
+  }
+};
+
+// 获取日历事件
+const fetchCalendarEvents = async () => {
+  try {
+    const events = await getCalendarEvents() // 调用获取日历事件的 API
+    calendarEvents.value = events // 假设返回的数据结构是 { data: [...] }
+    console.log('获取的日历事件:', calendarEvents.value);
+  } catch (error) {
+    console.error('获取日历事件失败:', error);
+  }
+};
+
+// 在组件挂载时获取数据
+onMounted(() => {
+  fetchProducts();
+  fetchCalendarEvents();
+});
 
 // 过滤器处理
 const selectedProducts = ref([]);
@@ -163,16 +220,10 @@ const filteredEvents = computed(() => {
   return filtered;
 });
 
-// 获取当前选中日期的所有版本
-const currentDateVersions = computed(() => {
-  if (!currentDate.value) return [];
-  return filteredEvents.value.filter(event => event.start === currentDate.value);
-});
-
 // 按产品分组的版本
 const groupedVersions = computed(() => {
   const groups = {};
-  currentDateVersions.value.forEach(version => {
+  currentDateFilteredVersions.value.forEach(version => {
     if (!groups[version.productId]) {
       groups[version.productId] = {
         productId: version.productId,
@@ -227,56 +278,6 @@ const versions = computed(() => {
 // 定义 selectedRequirement
 const selectedRequirement = ref(null); // 或者根据需要使用 computed
 
-// 更新获取日历事件的方法
-const fetchProducts = async () => {
-  try {
-    const response = await fetch('http://localhost:8000/api/products/');
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    const productsData = await response.json();
-
-    // 调试输出产品数据
-    console.log('获取的产品数据:', productsData);
-
-    // 检查返回的数据结构
-    if (!Array.isArray(productsData.data)) {
-      console.error('返回的数据不是数组:', productsData.data);
-      return;
-    }
-
-    // 处理产品数据并获取版本事件
-    const versionEvents = productsData.data.flatMap(product => 
-      product.projects.flatMap(project => 
-        project.versions.map(version => ({
-          title: version.name,
-          start: version.release_date,
-          extendedProps: {
-            status: version.status,
-            productName: project.name,
-            version_number: version.name
-          }
-        }))
-      )
-    );
-
-    // 调试输出版本事件
-    console.log('获取的版本事件:', versionEvents);
-
-    // 合并事件
-    events.value = versionEvents;
-    return productsData.data;
-  } catch (error) {
-    console.error('获取产品数据失败:', error);
-  }
-};
-
-const fetchCalendarEvents = async () => {
-  // 移除事件数据的获取
-  // 直接返回，不获取事件数据
-  return;
-};
-
 // 递归函数来计算每个部门的版本总数
 const calculateVersionCounts = (departments) => {
   const counts = {};
@@ -304,7 +305,7 @@ const calendarOptions = {
   plugins: [dayGridPlugin, interactionPlugin],
   initialView: 'dayGridMonth',
   locale: zhCnLocale,
-  events: events.value, // 将事件数据传递给 FullCalendar
+  events: events.value, // 确保这里是 events.value
   dateClick: (info) => {
     currentDate.value = info.dateStr;
     document.querySelectorAll('.fc-day-selected').forEach(el => {
@@ -316,11 +317,12 @@ const calendarOptions = {
     const releaseDate = arg.event.extendedProps.release_date; // 获取事件的发布日期
     const versionCount = versionCountsByDepartment.value[releaseDate] || 0; // 获取该日期的版本总数
 
-    // 调试输出事件内容
-    console.log('事件内容:', arg.event);
-
+  
     return {
-      html: `<div class='fc-event-main-content'>\n        <div class='event-title'>\n          <span>预计发布版本/迭代: ${versionCount}</span>\n        </div>\n      </div>`
+      html: `<div class='fc-event-main-content'>\n      
+          <div class='event-title'>\n          
+            <span>预计发布版本/迭代: ${versionCount} </span>\n      
+              </div>\n      </div>`
     };
   },
   eventDidMount: (info) => {
@@ -398,28 +400,32 @@ const handleStatusFilter = (value) => {
 }
 
 // 添加统计计算
-const statistics = computed(() => [
-  {
-    label: '本月发布计划',
-    value: events.value.filter(event => {
-      const date = new Date(event.date)
-      const now = new Date()
-      return date.getMonth() === now.getMonth()
-    }).length
-  },
-  {
-    label: '未开始版本',
-    value: events.value.filter(event => 
-      event.extendedProps.status === '规划中'
-    ).length
-  },
-  {
-    label: '开发中版本',
-    value: events.value.filter(event => 
-      event.extendedProps.status === '开发中'
-    ).length
-  }
-])
+const statistics = computed(() => {
+  const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
+
+  const totalVersions = calendarEvents.value.filter(event => {
+    const eventDate = new Date(event.date);
+    return eventDate.getMonth() === currentMonth && eventDate.getFullYear() === currentYear;
+  }).length;
+
+  const unopenedCount = calendarEvents.value.filter(event => event.extendedProps.status === 'UNOPENED').length;
+  const publishedCount = calendarEvents.value.filter(event => event.extendedProps.status === 'PUBLISHED').length;
+  const inProgressCount = calendarEvents.value.filter(event => event.extendedProps.status === 'UNPUBLISH').length;
+  const notStartedIterations = calendarEvents.value.filter(event => event.extendedProps.type === 'iteration' && event.extendedProps.status === 'NOT_STARTED').length;
+  const activeIterations = calendarEvents.value.filter(event => event.extendedProps.type === 'iteration' && event.extendedProps.status === 'ACTIVE').length;
+  const completedIterations = calendarEvents.value.filter(event => event.extendedProps.type === 'iteration' && event.extendedProps.status === 'COMPLETE').length;
+
+  return [
+    { label: '预计发布日期的版本/迭代数量', value: totalVersions },
+    { label: '未开始版本数', value: unopenedCount },
+    { label: '已发布版本数', value: publishedCount },
+    { label: '进行中版本数', value: inProgressCount },
+    { label: '未开始迭代数', value: notStartedIterations },
+    { label: '进行中迭代数', value: activeIterations },
+    { label: '已完成迭代数', value: completedIterations },
+  ];
+});
 
 const exportCalendar = () => {
   const data = events.value.map(event => ({
@@ -478,10 +484,11 @@ const filteredVersionNumbers = computed(() => {
   });
 });
 
-// 在 mounted 钩子中调用 fetchCalendarEvents
-onMounted(() => {
-  fetchCalendarEvents();
-});
+// 处理日期点击事件
+const handleDateClick = (info) => {
+  currentDate.value = info.dateStr; // 获取选中的日期
+  dialogVisible.value = true; // 显示弹窗
+};
 </script>
 
 <style>
@@ -935,23 +942,25 @@ onMounted(() => {
 
 .statistics-cards {
   display: flex;
-  gap: 20px;
-  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 16px;
 }
 
 .stat-card {
-  flex: 1;
+  flex: 1 1 200px; /* 自适应宽度 */
+  padding: 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
   text-align: center;
 }
 
 .stat-value {
   font-size: 24px;
   font-weight: bold;
-  color: #409eff;
 }
 
 .stat-label {
-  margin-top: 8px;
+  font-size: 14px;
   color: #666;
 }
 </style> 
